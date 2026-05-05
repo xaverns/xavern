@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Binary Kalp Matrix</title>
+
+<style>
+@import url("https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Marcellus&display=swap");
+
+:root {
+    --page-bg: #040806;
+    --text-soft: rgba(236, 255, 238, 0.94);
+    --text-bright: rgba(248, 255, 248, 0.99);
+    --matrix-green: rgba(51, 255, 91, 0.88);
+    --matrix-glow: rgba(45, 255, 82, 0.58);
+    --mint-glow: rgba(177, 255, 193, 0.62);
+}
+
+html {
+    min-height: 100%;
+    background: var(--page-bg);
+}
+
+body {
+    margin: 0;
+    min-height: 200svh;
+    background: var(--page-bg);
+    color: var(--text-soft);
+    overflow-x: hidden;
+    font-family: "Chakra Petch", "Courier New", monospace;
+    font-synthesis: none;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: geometricPrecision;
+}
+
+body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+    background:
+        radial-gradient(circle at 50% 43%, rgba(27, 255, 82, 0.12), transparent 34%),
+        linear-gradient(180deg, rgba(0, 0, 0, 0.08), rgba(0, 0, 0, 0.66));
+}
+
+canvas {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    width: 100vw;
+    height: 100svh;
+    touch-action: manipulation;
+}
+
+.screen {
+    position: relative;
+    z-index: 2;
+    min-height: 100svh;
+    pointer-events: none;
+}
+
+.scroll-hint {
+    position: absolute;
+    left: 50%;
+    bottom: max(2.4rem, calc(env(safe-area-inset-bottom) + 1.5rem));
+    transform: translateX(-50%);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.62rem 0.92rem;
+    border: 1px solid rgba(146, 255, 166, 0.5);
+    border-radius: 999px;
+    background: rgba(3, 18, 7, 0.72);
+    color: var(--text-bright);
+    font-family: "Chakra Petch", "Courier New", monospace;
+    font-size: clamp(0.9rem, 3.6vw, 1.12rem);
+    font-weight: 700;
+    letter-spacing: 0.045em;
+    text-transform: lowercase;
+    box-shadow:
+        0 0 0 1px rgba(24, 255, 74, 0.14),
+        0 0 18px rgba(177, 255, 193, 0.34),
+        0 0 42px rgba(45, 255, 82, 0.36),
+        inset 0 0 18px rgba(45, 255, 82, 0.14);
+    text-shadow:
+        0 0 5px rgba(248, 255, 248, 0.72),
+        0 0 16px var(--mint-glow),
+        0 0 30px var(--matrix-glow);
+    animation: hintPulse 1.9s ease-in-out infinite;
+    white-space: nowrap;
+}
+
+.audio-toggle {
+    position: fixed;
+    right: max(1rem, env(safe-area-inset-right));
+    top: max(1rem, env(safe-area-inset-top));
+    z-index: 4;
+    display: grid;
+    place-items: center;
+    width: 2.85rem;
+    aspect-ratio: 1;
+    border: 1px solid rgba(146, 255, 166, 0.48);
+    border-radius: 50%;
+    background: rgba(3, 18, 7, 0.68);
+    color: var(--text-bright);
+    font-family: "Chakra Petch", "Courier New", monospace;
+    font-size: 1.05rem;
+    font-weight: 700;
+    cursor: pointer;
+    box-shadow:
+        0 0 0 1px rgba(24, 255, 74, 0.12),
+        0 0 22px rgba(45, 255, 82, 0.28),
+        inset 0 0 16px rgba(45, 255, 82, 0.13);
+    text-shadow:
+        0 0 6px rgba(248, 255, 248, 0.72),
+        0 0 18px var(--matrix-glow);
+    transition: transform 160ms ease, border-color 160ms ease, background 160ms ease;
+}
+
+.audio-toggle:hover,
+.audio-toggle:focus-visible {
+    border-color: rgba(198, 255, 209, 0.86);
+    background: rgba(5, 35, 13, 0.78);
+    transform: scale(1.06);
+    outline: none;
+}
+
+.audio-toggle.is-playing {
+    color: rgba(196, 255, 207, 0.98);
+}
+
+.scroll-hint::after {
+    content: "↓";
+    font-size: 1.18em;
+    line-height: 1;
+    color: rgba(172, 255, 186, 0.98);
+}
+
+.message-screen {
+    display: grid;
+    place-items: center;
+    padding: clamp(1.25rem, 6vw, 4rem);
+    box-sizing: border-box;
+}
+
+.message {
+    max-width: 780px;
+    margin: 0;
+    color: var(--text-bright);
+    font-family: "Marcellus", "Times New Roman", serif;
+    font-size: clamp(1.45rem, 6.1vw, 4rem);
+    font-weight: 400;
+    line-height: 1.2;
+    letter-spacing: 0;
+    text-align: center;
+    text-wrap: balance;
+    text-shadow:
+        0 0 2px rgba(248, 255, 248, 0.82),
+        0 0 11px rgba(204, 255, 213, 0.72),
+        0 0 28px rgba(55, 255, 94, 0.48),
+        0 0 62px rgba(29, 195, 67, 0.36);
+    filter: drop-shadow(0 0 18px rgba(50, 255, 91, 0.18));
+    opacity: 0;
+    transform: translateY(2rem) scale(0.98);
+    animation: messageReveal linear both;
+    animation-timeline: view();
+    animation-range: entry 8% cover 44%;
+}
+
+@keyframes hintPulse {
+    0%, 100% {
+        opacity: 0.82;
+        transform: translate(-50%, 0);
+    }
+
+    50% {
+        opacity: 1;
+        transform: translate(-50%, 0.35rem);
+    }
+}
+
+@keyframes messageReveal {
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+@supports not (animation-timeline: view()) {
+    .message {
+        opacity: 1;
+        transform: none;
+    }
+}
+
+@media (max-width: 520px) {
+    body {
+        min-height: 190svh;
+    }
+
+    .scroll-hint {
+        bottom: max(1.6rem, calc(env(safe-area-inset-bottom) + 1rem));
+        padding: 0.56rem 0.82rem;
+    }
+
+    .audio-toggle {
+        width: 2.55rem;
+    }
+
+    .message-screen {
+        align-items: start;
+        padding-top: 22svh;
+    }
+}
+</style>
+</head>
+<body>
+
+<canvas id="canvas"></canvas>
+<button class="audio-toggle" type="button" aria-label="Müziği aç" aria-pressed="false">♪</button>
+<main class="screen" aria-label="Binary kalp animasyonu">
+    <div class="scroll-hint">aşağı kaydır</div>
+</main>
+<section class="screen message-screen" aria-label="Mesaj">
+    <p class="message">4 saattir kodu yazmakla ugrasiyorum hani demistin ya deger vermiyosun diye belki simdi ne kadar deger verdigimi anlarsin (sana küs değilim ne zaman istersen yazabilirsin).</p>
+</section>
+
+<script>
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
+const audioToggle = document.querySelector(".audio-toggle");
+
+function resize() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    initMatrix();
+}
+window.addEventListener("resize", resize);
+
+// MATRIX
+const letters = "01";
+const fontSize = 16;
+let columns, drops;
+const codeFont = `"Chakra Petch", "Courier New", monospace`;
+
+function initMatrix() {
+    columns = Math.floor(canvas.width / fontSize);
+    drops = [];
+    for (let i = 0; i < columns; i++) {
+        drops[i] = Math.random() * canvas.height;
+    }
+}
+resize();
+
+// KALP FORMÜLÜ
+function heart(t) {
+    return {
+        x: 16 * Math.pow(Math.sin(t), 3),
+        y: -(13 * Math.cos(t) - 5 * Math.cos(2*t) - 2 * Math.cos(3*t) - Math.cos(4*t))
+    };
+}
+
+// ANA KALP
+let particles = [];
+for (let i = 0; i < 800; i++) {
+    let t = Math.random() * Math.PI * 2;
+    let pos = heart(t);
+
+    particles.push({
+        baseX: pos.x,
+        baseY: pos.y,
+        offset: Math.random() * 10
+    });
+}
+
+function getMainHeartScale() {
+    return Math.min(14, canvas.width / 38, canvas.height / 42);
+}
+
+// DRAW
+function draw() {
+    ctx.shadowBlur = 0;
+    ctx.shadowColor = "transparent";
+    ctx.fillStyle = "rgba(0,0,0,0.15)";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // MATRIX
+    ctx.fillStyle = "rgba(68, 255, 103, 0.78)";
+    ctx.shadowColor = "rgba(68, 255, 103, 0.5)";
+    ctx.shadowBlur = 8;
+    ctx.font = `600 ${fontSize}px ${codeFont}`;
+
+    for (let i = 0; i < drops.length; i++) {
+        let text = letters[Math.floor(Math.random() * 2)];
+        ctx.fillText(text, i * fontSize, drops[i] * fontSize);
+
+        if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) {
+            drops[i] = 0;
+        }
+        drops[i]++;
+    }
+
+    let time = Date.now() * 0.002;
+
+    // ANA KALP (sabit boyut, sadece hafif dönme)
+    ctx.fillStyle = "rgba(192, 255, 202, 0.92)";
+    ctx.shadowColor = "rgba(49, 255, 88, 0.82)";
+    ctx.shadowBlur = 15;
+    particles.forEach(p => {
+        let scale = getMainHeartScale();
+
+        let x = canvas.width/2 + (p.baseX * scale);
+        let y = canvas.height/2 + (p.baseY * scale);
+
+        // sadece hafif dönme efekti
+        x += Math.sin(time + p.offset) * 3;
+        y += Math.cos(time + p.offset) * 3;
+
+        ctx.font = `700 18px ${codeFont}`;
+        ctx.fillText(Math.random() > 0.5 ? "0" : "1", x, y);
+    });
+
+    requestAnimationFrame(draw);
+}
+
+draw();
+
+// Original soft background loop generated with Web Audio.
+let audioCtx;
+let masterGain;
+let delayNode;
+let feedbackGain;
+let filterNode;
+let schedulerTimer;
+let nextNoteTime = 0;
+let stepIndex = 0;
+let audioStarted = false;
+let audioPlaying = false;
+
+const bpm = 64;
+const stepDuration = 60 / bpm / 2;
+const melody = [
+    "E5", null, "B4", "G4", null, "A4", "B4", null,
+    "C5", null, "B4", "G4", "E4", null, "G4", null,
+    "D5", null, "B4", "A4", null, "F#4", "A4", null,
+    "B4", null, "A4", "F#4", "D4", null, null, null,
+    "G4", null, "A4", "B4", null, "D5", "C5", null,
+    "B4", null, "A4", "F#4", null, "D4", "F#4", null,
+    "E4", null, "G4", "A4", "B4", null, "D5", null,
+    "C5", null, "B4", "G4", null, "E4", null, null
+];
+const bassline = [
+    "E2", null, null, null, null, null, null, null,
+    "C2", null, null, null, null, null, null, null,
+    "D2", null, null, null, null, null, null, null,
+    "B1", null, null, null, null, null, null, null
+];
+const chordProgression = [
+    ["E3", "G3", "B3", "E4"],
+    ["C3", "E3", "G3", "D4"],
+    ["D3", "F#3", "A3", "E4"],
+    ["B2", "D3", "F#3", "A3"]
+];
+const arpeggio = [
+    "E4", "B4", "G4", "B4", "C4", "G4", "E4", "G4",
+    "D4", "A4", "F#4", "A4", "B3", "F#4", "D4", "F#4"
+];
+
+function noteFrequency(note) {
+    const match = /^([A-G]#?)(\d)$/.exec(note);
+    const names = { C: 0, "C#": 1, D: 2, "D#": 3, E: 4, F: 5, "F#": 6, G: 7, "G#": 8, A: 9, "A#": 10, B: 11 };
+    const semitone = names[match[1]] + (Number(match[2]) + 1) * 12;
+    return 440 * Math.pow(2, (semitone - 69) / 12);
+}
+
+function createAudioGraph() {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    masterGain = audioCtx.createGain();
+    masterGain.gain.value = 0.16;
+
+    filterNode = audioCtx.createBiquadFilter();
+    filterNode.type = "lowpass";
+    filterNode.frequency.value = 3600;
+    filterNode.Q.value = 0.9;
+
+    delayNode = audioCtx.createDelay(1.8);
+    delayNode.delayTime.value = stepDuration * 1.5;
+
+    feedbackGain = audioCtx.createGain();
+    feedbackGain.gain.value = 0.34;
+
+    delayNode.connect(feedbackGain);
+    feedbackGain.connect(delayNode);
+    delayNode.connect(masterGain);
+    filterNode.connect(masterGain);
+    masterGain.connect(audioCtx.destination);
+}
+
+function envelope(gain, time, peak, attack, release) {
+    gain.gain.cancelScheduledValues(time);
+    gain.gain.setValueAtTime(0.0001, time);
+    gain.gain.exponentialRampToValueAtTime(peak, time + attack);
+    gain.gain.exponentialRampToValueAtTime(0.0001, time + release);
+}
+
+function playTone(note, time, length, type = "triangle", level = 0.14, attack = 0.012, detune = 8) {
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    const frequency = noteFrequency(note);
+
+    osc.type = type;
+    osc.frequency.setValueAtTime(frequency, time);
+    osc.detune.setValueAtTime((Math.random() - 0.5) * detune, time);
+    envelope(gain, time, level, attack, length);
+
+    osc.connect(gain);
+    gain.connect(filterNode);
+    gain.connect(delayNode);
+    osc.start(time);
+    osc.stop(time + length + 0.04);
+}
+
+function playPad(chord, time) {
+    chord.forEach((note, index) => {
+        playTone(note, time + index * 0.022, stepDuration * 7.8, "sine", 0.038, 0.62, 5);
+        playTone(note, time + index * 0.022, stepDuration * 7.6, "triangle", 0.022, 0.58, 4);
+    });
+}
+
+function scheduleStep(time) {
+    const melodyNote = melody[stepIndex % melody.length];
+    const bassNote = bassline[stepIndex % bassline.length];
+    const chord = chordProgression[Math.floor(stepIndex / 8) % chordProgression.length];
+    const arpeggioNote = arpeggio[stepIndex % arpeggio.length];
+
+    if (stepIndex % 8 === 0) {
+        playPad(chord, time);
+    }
+
+    if (melodyNote) {
+        playTone(melodyNote, time, stepDuration * 2.9, "triangle", 0.078, 0.07, 6);
+        playTone(melodyNote, time + 0.012, stepDuration * 2.7, "sine", 0.032, 0.09, 4);
+    }
+
+    if (stepIndex % 2 === 1 && arpeggioNote) {
+        playTone(arpeggioNote, time, stepDuration * 1.35, "sine", 0.024, 0.025, 3);
+    }
+
+    if (bassNote) {
+        playTone(bassNote, time, stepDuration * 7.7, "sine", 0.068, 0.2, 3);
+    }
+
+    stepIndex++;
+}
+
+function scheduler() {
+    while (nextNoteTime < audioCtx.currentTime + 0.12) {
+        scheduleStep(nextNoteTime);
+        nextNoteTime += stepDuration;
+    }
+}
+
+function setAudioToggleState(isPlaying) {
+    audioPlaying = isPlaying;
+    audioToggle.classList.toggle("is-playing", isPlaying);
+    audioToggle.setAttribute("aria-label", isPlaying ? "Müziği kapat" : "Müziği aç");
+    audioToggle.setAttribute("aria-pressed", isPlaying ? "true" : "false");
+    audioToggle.textContent = isPlaying ? "Ⅱ" : "♪";
+}
+
+async function startAudio({ silent = false } = {}) {
+    if (!audioStarted) {
+        createAudioGraph();
+        nextNoteTime = audioCtx.currentTime + 0.04;
+        schedulerTimer = window.setInterval(scheduler, 25);
+        audioStarted = true;
+    }
+
+    try {
+        await audioCtx.resume();
+    } catch (error) {
+        return false;
+    }
+
+    if (audioCtx.state !== "running") {
+        return false;
+    }
+
+    setAudioToggleState(true);
+    return true;
+}
+
+async function toggleAudio() {
+    if (!audioStarted || audioCtx.state === "suspended") {
+        await startAudio({ silent: true });
+        return;
+    }
+
+    await audioCtx.suspend();
+    setAudioToggleState(false);
+}
+
+audioToggle.addEventListener("click", toggleAudio);
+window.addEventListener("load", () => {
+    startAudio({ silent: true });
+});
+window.addEventListener("pointerdown", event => {
+    if (!audioPlaying && event.target !== audioToggle) {
+        startAudio({ silent: true });
+    }
+}, { once: true });
+</script>
+
+</body>
+</html>
